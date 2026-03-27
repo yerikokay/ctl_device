@@ -80,6 +80,7 @@ server:
   jsonrpc_port: 3711
   mcp_port: 3710
   dashboard_port: 3712
+  grpc_port: 3713
   token: ""
   state_dir: "~/.config/ctl_device"
   snapshot_interval_seconds: 30
@@ -102,9 +103,13 @@ projects: []
 ## CLI 命令
 
 ```bash
-# Full 模式（默认）
-ctl_device                          # 启动 full 节点
-ctl_device --connect <addr>         # 启动 client 节点
+# Full 模式（默认，启动所有协议）
+ctl_device                          # JSON-RPC :3711 + MCP SSE :3710 + gRPC :3713 + Dashboard :3712
+ctl_device --token your-secret      # 带认证
+ctl_device --grpc-port 4000         # 自定义 gRPC 端口
+
+# Client 模式
+ctl_device --connect <addr>         # 自动注册 agent + 发送心跳
 
 # 工具命令
 ctl_device mcp                      # MCP stdio 模式（供 IDE 配置）
@@ -112,7 +117,7 @@ ctl_device status                   # 查询项目/任务状态
 ctl_device dispatch -p <project> -f <task.json>  # 下发任务
 ctl_device logs -f                  # 实时日志（SSE）
 
-# 向后兼容（已废弃）
+# 向后兼容（已废弃，仍可用）
 ctl_device server                   # → 等同于 ctl_device
 ctl_device client mcp               # → 等同于 ctl_device mcp
 ```
@@ -132,7 +137,7 @@ ctl_device client mcp               # → 等同于 ctl_device mcp
 }
 ```
 
-### Trae CN / Cursor / JB
+### Trae CN / Cursor / JB / VSCode
 
 ```json
 {
@@ -159,6 +164,43 @@ ctl_device client mcp               # → 等同于 ctl_device mcp
   }
 }
 ```
+
+## gRPC 接入
+
+gRPC server 默认监听 `:3713`，支持所有核心操作，适合高性能场景或自定义客户端。
+
+### proto 文件
+
+```
+api/proto/ctl_device.proto
+```
+
+### 生成 Go client
+
+```bash
+protoc --go_out=. --go_opt=paths=source_relative \
+       --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+       api/proto/ctl_device.proto
+```
+
+### 认证
+
+在 gRPC metadata 中传递 token：
+
+```go
+ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs(
+    "authorization", "Bearer your-secret-token",
+))
+```
+
+### 端口一览
+
+| 协议 | 默认端口 | 说明 |
+|------|----------|------|
+| JSON-RPC HTTP | 3711 | 主要 RPC API |
+| MCP SSE | 3710 | IDE / OpenClaw 接入 |
+| Web Dashboard | 3712 | 可视化管理界面 |
+| gRPC | 3713 | 高性能 RPC |
 
 ## 架构
 

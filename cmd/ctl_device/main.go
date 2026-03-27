@@ -34,6 +34,7 @@ func main() {
 		jsonrpcPort   int
 		mcpPort       int
 		dashboardPort int
+		grpcPort      int
 		stateDir      string
 	)
 
@@ -45,7 +46,7 @@ func main() {
 			if connectAddr != "" {
 				return runClientMode(connectAddr, rootToken, configFile)
 			}
-			return runServer(jsonrpcPort, mcpPort, dashboardPort, rootToken, stateDir, configFile)
+			return runServer(jsonrpcPort, mcpPort, dashboardPort, grpcPort, rootToken, stateDir, configFile)
 		},
 	}
 	rootCmd.Flags().StringVarP(&connectAddr, "connect", "c", "", "Connect to full node address (enables client mode), e.g. http://192.168.1.100:3711")
@@ -54,6 +55,7 @@ func main() {
 	rootCmd.Flags().IntVar(&jsonrpcPort, "jsonrpc-port", 0, "JSON-RPC server port (default 3711)")
 	rootCmd.Flags().IntVar(&mcpPort, "mcp-port", 0, "MCP SSE server port (default 3710)")
 	rootCmd.Flags().IntVar(&dashboardPort, "dashboard-port", 0, "Dashboard port (default 3712)")
+	rootCmd.Flags().IntVar(&grpcPort, "grpc-port", 0, "gRPC server port (default 3713)")
 	rootCmd.Flags().StringVar(&stateDir, "state-dir", "", "State directory")
 
 	// --- Deprecated: server subcommand ---
@@ -61,6 +63,7 @@ func main() {
 		svrJSONRPCPort   int
 		svrMCPPort       int
 		svrDashboardPort int
+		svrGRPCPort      int
 		svrToken         string
 		svrStateDir      string
 		svrConfigFile    string
@@ -71,12 +74,13 @@ func main() {
 		Long:       "Deprecated: just run 'ctl_device' directly.",
 		Deprecated: "just run 'ctl_device' directly.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runServer(svrJSONRPCPort, svrMCPPort, svrDashboardPort, svrToken, svrStateDir, svrConfigFile)
+			return runServer(svrJSONRPCPort, svrMCPPort, svrDashboardPort, svrGRPCPort, svrToken, svrStateDir, svrConfigFile)
 		},
 	}
 	serverCmd.Flags().IntVar(&svrJSONRPCPort, "jsonrpc-port", 0, "JSON-RPC server port (default 3711)")
 	serverCmd.Flags().IntVar(&svrMCPPort, "mcp-port", 0, "MCP SSE server port (default 3710)")
 	serverCmd.Flags().IntVar(&svrDashboardPort, "dashboard-port", 0, "Dashboard port (default 3712)")
+	serverCmd.Flags().IntVar(&svrGRPCPort, "grpc-port", 0, "gRPC server port (default 3713)")
 	serverCmd.Flags().StringVarP(&svrToken, "token", "t", "", "Authentication token")
 	serverCmd.Flags().StringVar(&svrStateDir, "state-dir", "", "State directory")
 	serverCmd.Flags().StringVarP(&svrConfigFile, "config", "c", "", "Config file path")
@@ -265,7 +269,7 @@ func main() {
 	}
 }
 
-func runServer(jsonrpcPort, mcpPort, dashboardPort int, token, stateDir, configFile string) error {
+func runServer(jsonrpcPort, mcpPort, dashboardPort, grpcPort int, token, stateDir, configFile string) error {
 	var cfg *config.ServerConfig
 	var err error
 
@@ -321,6 +325,9 @@ func runServer(jsonrpcPort, mcpPort, dashboardPort int, token, stateDir, configF
 	}
 	if dashboardPort != 0 {
 		cfg.Server.DashboardPort = dashboardPort
+	}
+	if grpcPort != 0 {
+		cfg.Server.GRPCPort = grpcPort
 	}
 	if stateDir != "" {
 		cfg.Server.StateDir = stateDir

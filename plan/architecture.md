@@ -27,15 +27,15 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      ctl_device Server                           │
-│                  （VPS / 局域网任意一台机器）                      │
+│                 ctl_device (Full 模式)                           │
+│              （VPS / 局域网任意一台机器）                         │
 │                                                                  │
-│  ┌─────────────┐  ┌─────────────────┐  ┌────────────────────┐  │
-│  │ MCP SSE     │  │ JSON-RPC HTTP   │  │ Web Dashboard      │  │
-│  │ :3710/sse   │  │ :3711           │  │ :3712              │  │
-│  └──────┬──────┘  └────────┬────────┘  └────────────────────┘  │
-│         └──────────────────┘                                    │
-│                     ▼                                           │
+│  ┌──────────┐ ┌───────────────┐ ┌──────────┐ ┌─────────────┐  │
+│  │ MCP SSE  │ │ JSON-RPC HTTP │ │  gRPC    │ │  Dashboard  │  │
+│  │ :3710    │ │ :3711         │ │ :3713    │ │  :3712      │  │
+│  └────┬─────┘ └──────┬────────┘ └────┬─────┘ └─────────────┘  │
+│       └──────────────┴───────────────┘                         │
+│                              ▼                                  │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │  Core Engine                                             │  │
 │  │  ┌────────────┐ ┌────────────┐ ┌──────────────────────┐  │  │
@@ -50,13 +50,14 @@
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                  │
 │  持久化层: ~/.config/ctl_device/ (JSON files)                    │
+│  锁文件:   ~/.config/ctl_device/ctl_device.lock (PID)           │
 └─────────────────────────────────────────────────────────────────┘
          ▲                              ▲
-         │ MCP SSE / JSON-RPC           │ MCP stdio / JSON-RPC
+         │ MCP SSE / JSON-RPC / gRPC    │ --connect / MCP stdio
 ┌────────────────────┐      ┌──────────────────────────────────┐
 │  调度者             │      │  执行者（任意机器）               │
-│  OpenClaw + MCP    │      │  ctl_device client --mcp-stdio   │
-│  任何有 API 的工具  │      │  配置到 Claude Code / Cursor / JB│
+│  OpenClaw + MCP    │      │  ctl_device --connect <addr>     │
+│  任何有 API 的工具  │      │  或 IDE + ctl_device mcp         │
 └────────────────────┘      └──────────────────────────────────┘
 ```
 
@@ -93,13 +94,27 @@ bridge.agent.register / list / heartbeat
 bridge.event.subscribe
 ```
 
+### gRPC Services（:3713）
+```
+AgentService:   Register / Heartbeat / ListAgents
+ProjectService: Register / List
+TaskService:    Get / UpdateStatus / Complete / Block / Dispatch / Advance
+EventService:   Subscribe（server-streaming，实时事件流）
+```
+认证：gRPC metadata `authorization: Bearer <token>`
+
 ### CLI 子命令
 ```bash
-ctl_device server              # 启动 server
-ctl_device client mcp          # MCP stdio 模式（供 IDE 配置）
-ctl_device client status       # 查询状态
-ctl_device client dispatch     # 下发任务
-ctl_device client logs         # 实时日志
+ctl_device                     # 默认启动 full 模式（所有协议全开）
+ctl_device --connect <addr>    # 以 client 身份加入，自动注册 agent + 心跳
+ctl_device mcp                 # MCP stdio 模式（供 IDE 配置）
+ctl_device status              # 查询状态
+ctl_device dispatch            # 下发任务
+ctl_device logs                # 实时日志
+
+# 向后兼容（已废弃）
+ctl_device server              # → 等同于 ctl_device
+ctl_device client mcp          # → 等同于 ctl_device mcp
 ```
 
 ---
